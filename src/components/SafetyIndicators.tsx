@@ -1,9 +1,10 @@
-import { Shield, AlertTriangle, CheckCircle, Lock, Link2, Hash, Zap, Info } from 'lucide-react';
+import { Shield, AlertTriangle, CheckCircle, Lock, Link2, Hash, Zap } from 'lucide-react';
 import { Card } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
 
 interface Indicator {
   label: string;
-  value: string;
+  value: string | number;
   status: 'safe' | 'warning' | 'danger';
   icon: React.ReactNode;
 }
@@ -25,138 +26,138 @@ interface SafetyIndicatorsProps {
 export const SafetyIndicators = ({ features, riskFactors, safetyFactors }: SafetyIndicatorsProps) => {
   const indicators: Indicator[] = [
     {
-      label: 'HTTPS',
-      value: features.ssl_final_state === 1 ? 'Secure' : 'Insecure',
+      label: 'HTTPS Security',
+      value: features.ssl_final_state === 1 ? 'Enabled' : 'Missing',
       status: features.ssl_final_state === 1 ? 'safe' : 'danger',
       icon: <Lock className="w-4 h-4" />
     },
     {
-      label: 'Length',
-      value: features.url_length > 75 ? 'Long' : 'Normal',
+      label: 'URL Length',
+      value: features.url_length > 75 ? 'Suspicious' : 'Normal',
       status: features.url_length > 75 ? 'warning' : 'safe',
       icon: <Link2 className="w-4 h-4" />
     },
     {
       label: 'IP Address',
-      value: features.having_ip === 1 ? 'Detected' : 'Clean',
+      value: features.having_ip === 1 ? 'Present' : 'None',
       status: features.having_ip === 1 ? 'danger' : 'safe',
       icon: <Hash className="w-4 h-4" />
     },
     {
-      label: 'Shortener',
-      value: features.shortening_service === 1 ? 'Yes' : 'No',
+      label: 'URL Shortening',
+      value: features.shortening_service === 1 ? 'Detected' : 'None',
       status: features.shortening_service === 1 ? 'warning' : 'safe',
       icon: <Zap className="w-4 h-4" />
+    },
+    {
+      label: 'Suspicious Symbols',
+      value: features.has_at_symbol === 1 ? 'Detected' : 'None',
+      status: features.has_at_symbol === 1 ? 'danger' : 'safe',
+      icon: <AlertTriangle className="w-4 h-4" />
+    },
+    {
+      label: 'Subdomain Count',
+      value: features.subdomain_count === 1 ? 'Multiple' : 'Standard',
+      status: features.subdomain_count === 1 ? 'warning' : 'safe',
+      icon: <Shield className="w-4 h-4" />
     }
   ];
 
   const getStatusColor = (status: string) => {
     switch (status) {
       case 'safe':
-        return 'border-safe/30 bg-safe/5';
+        return 'bg-safe/20 text-safe border-safe/50';
       case 'warning':
-        return 'border-yellow-500/30 bg-yellow-500/5';
+        return 'bg-yellow-500/20 text-yellow-500 border-yellow-500/50';
       case 'danger':
-        return 'border-malicious/30 bg-malicious/5';
+        return 'bg-malicious/20 text-malicious border-malicious/50';
       default:
-        return 'border-muted bg-muted/5';
+        return 'bg-muted text-muted-foreground border-muted';
     }
   };
 
-  const getStatusIndicator = (status: string) => {
+  const getStatusIcon = (status: string) => {
     switch (status) {
       case 'safe':
-        return <div className="w-2 h-2 rounded-full bg-safe" />;
+        return <CheckCircle className="w-4 h-4" />;
       case 'warning':
-        return <div className="w-2 h-2 rounded-full bg-yellow-500" />;
+        return <AlertTriangle className="w-4 h-4" />;
       case 'danger':
-        return <div className="w-2 h-2 rounded-full bg-malicious" />;
+        return <AlertTriangle className="w-4 h-4" />;
       default:
         return null;
     }
   };
 
   return (
-    <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-700 delay-150">
-      {/* Quick Indicators */}
-      <Card className="p-6 bg-card/30 backdrop-blur-sm border-primary/10">
-        <div className="flex items-center gap-2 mb-4">
-          <Info className="w-4 h-4 text-muted-foreground" />
-          <h4 className="text-sm font-semibold text-muted-foreground">Quick Analysis</h4>
-        </div>
-        
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-          {indicators.map((indicator, index) => (
-            <div
-              key={index}
-              className={`p-3 rounded-lg border ${getStatusColor(indicator.status)} transition-all duration-300 animate-in fade-in zoom-in-95`}
-              style={{ animationDelay: `${index * 80}ms` }}
-            >
-              <div className="flex items-center justify-between mb-2">
-                <div className="text-muted-foreground/60">
-                  {indicator.icon}
-                </div>
-                {getStatusIndicator(indicator.status)}
+    <Card className="p-6 bg-card/50 backdrop-blur-sm animate-in fade-in slide-in-from-bottom-4 duration-700 delay-150">
+      <h4 className="text-xl font-bold mb-6 flex items-center gap-2">
+        <Shield className="w-5 h-5 text-primary" />
+        Security Analysis Breakdown
+      </h4>
+
+      {/* Visual Indicators Grid */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+        {indicators.map((indicator, index) => (
+          <div
+            key={index}
+            className={`p-4 rounded-lg border-2 ${getStatusColor(indicator.status)} transition-all duration-300 hover:scale-105 animate-in fade-in slide-in-from-left-4`}
+            style={{ animationDelay: `${index * 100}ms` }}
+          >
+            <div className="flex items-center justify-between mb-2">
+              <div className="flex items-center gap-2">
+                {indicator.icon}
+                <span className="font-medium text-sm">{indicator.label}</span>
               </div>
-              <div className="text-xs font-medium text-muted-foreground mb-0.5">
-                {indicator.label}
-              </div>
-              <div className="text-sm font-semibold">
-                {indicator.value}
-              </div>
+              {getStatusIcon(indicator.status)}
             </div>
-          ))}
-        </div>
-      </Card>
-
-      {/* Detailed Factors */}
-      {(riskFactors.length > 0 || safetyFactors.length > 0) && (
-        <Card className="p-6 bg-card/30 backdrop-blur-sm border-primary/10">
-          <div className="space-y-4">
-            {riskFactors.length > 0 && (
-              <div>
-                <div className="flex items-center gap-2 mb-3">
-                  <AlertTriangle className="w-4 h-4 text-malicious" />
-                  <h5 className="text-sm font-semibold">Risk Factors</h5>
-                </div>
-                <ul className="space-y-2">
-                  {riskFactors.slice(0, 3).map((factor, index) => (
-                    <li
-                      key={index}
-                      className="text-sm text-muted-foreground flex items-start gap-2 animate-in fade-in slide-in-from-left-2"
-                      style={{ animationDelay: `${index * 50}ms` }}
-                    >
-                      <span className="text-malicious mt-0.5">•</span>
-                      <span>{factor}</span>
-                    </li>
-                  ))}
-                </ul>
-              </div>
-            )}
-
-            {safetyFactors.length > 0 && (
-              <div>
-                <div className="flex items-center gap-2 mb-3">
-                  <CheckCircle className="w-4 h-4 text-safe" />
-                  <h5 className="text-sm font-semibold">Safety Factors</h5>
-                </div>
-                <ul className="space-y-2">
-                  {safetyFactors.slice(0, 3).map((factor, index) => (
-                    <li
-                      key={index}
-                      className="text-sm text-muted-foreground flex items-start gap-2 animate-in fade-in slide-in-from-left-2"
-                      style={{ animationDelay: `${index * 50}ms` }}
-                    >
-                      <span className="text-safe mt-0.5">•</span>
-                      <span>{factor}</span>
-                    </li>
-                  ))}
-                </ul>
-              </div>
-            )}
+            <div className="text-lg font-bold">{indicator.value}</div>
           </div>
-        </Card>
+        ))}
+      </div>
+
+      {/* Risk Factors Tags */}
+      {riskFactors.length > 0 && (
+        <div className="space-y-3 mb-4">
+          <h5 className="text-sm font-semibold text-malicious flex items-center gap-2">
+            <AlertTriangle className="w-4 h-4" />
+            Risk Indicators
+          </h5>
+          <div className="flex flex-wrap gap-2">
+            {riskFactors.map((factor, index) => (
+              <Badge
+                key={index}
+                variant="destructive"
+                className="bg-malicious/20 text-malicious border-malicious/50 animate-in fade-in zoom-in-95"
+                style={{ animationDelay: `${index * 50}ms` }}
+              >
+                {factor}
+              </Badge>
+            ))}
+          </div>
+        </div>
       )}
-    </div>
+
+      {/* Safety Factors Tags */}
+      {safetyFactors.length > 0 && (
+        <div className="space-y-3">
+          <h5 className="text-sm font-semibold text-safe flex items-center gap-2">
+            <CheckCircle className="w-4 h-4" />
+            Safety Indicators
+          </h5>
+          <div className="flex flex-wrap gap-2">
+            {safetyFactors.map((factor, index) => (
+              <Badge
+                key={index}
+                className="bg-safe/20 text-safe border-safe/50 animate-in fade-in zoom-in-95"
+                style={{ animationDelay: `${index * 50}ms` }}
+              >
+                {factor}
+              </Badge>
+            ))}
+          </div>
+        </div>
+      )}
+    </Card>
   );
 };

@@ -108,24 +108,36 @@ export const URLScanner = () => {
       {/* Results Section */}
       {result && (
         <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-700">
-          {/* Safety Score Card */}
-          <Card className="p-8 bg-card/40 backdrop-blur-sm border-primary/20">
+          {/* Safety Score Gauge */}
+          <Card
+            className={`p-8 pt-12 pb-16 border-2 ${
+              result.prediction === 'safe'
+                ? 'bg-safe/10 border-safe glow-safe'
+                : result.prediction === 'suspicious'
+                ? 'bg-yellow-500/10 border-yellow-500'
+                : 'bg-malicious/10 border-malicious glow-malicious'
+            }`}
+          >
+            <div className="flex items-center justify-center gap-3 mb-8">
+              <TrendingUp className="w-6 h-6 text-primary" />
+              <h3 className="text-2xl font-bold">Safety Score Analysis</h3>
+            </div>
             <SafetyScoreGauge 
               score={result.confidence} 
               prediction={result.prediction}
             />
-            <div className="mt-6 text-center">
-              <p className="text-sm text-muted-foreground max-w-md mx-auto leading-relaxed">
+            <div className="mt-12 text-center">
+              <p className="text-muted-foreground max-w-2xl mx-auto">
                 {result.prediction === 'safe'
-                  ? `Analysis indicates this URL is likely safe based on security checks.`
+                  ? `This website is ${result.confidence}% likely to be safe based on URL structure, SSL validity, and absence of malicious patterns.`
                   : result.prediction === 'suspicious'
-                  ? `This URL shows some warning signs. Proceed with caution.`
-                  : `Multiple security risks detected. Avoid visiting this URL.`}
+                  ? `This website shows ${100 - result.confidence}% suspicious indicators. Exercise caution and verify the source before proceeding.`
+                  : `This website is ${100 - result.confidence}% likely to be malicious based on multiple risk factors including URL obfuscation, suspicious patterns, and security vulnerabilities.`}
               </p>
             </div>
           </Card>
 
-          {/* Indicators */}
+          {/* Safety Indicators Breakdown */}
           <SafetyIndicators 
             features={result.features}
             riskFactors={result.riskFactors}
