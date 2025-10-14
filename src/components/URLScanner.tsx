@@ -123,16 +123,16 @@ export const URLScanner = () => {
               <h3 className="text-2xl font-bold">Safety Score Analysis</h3>
             </div>
             <SafetyScoreGauge 
-              score={100 - result.confidence} 
+              score={result.confidence} 
               prediction={result.prediction}
             />
-            <div className="mt-8 text-center">
-              <p className="text-sm text-muted-foreground max-w-xl mx-auto">
+            <div className="mt-12 text-center">
+              <p className="text-muted-foreground max-w-2xl mx-auto">
                 {result.prediction === 'safe'
-                  ? 'Low risk detected. URL structure appears legitimate.'
+                  ? `This website is ${result.confidence}% likely to be safe based on URL structure, SSL validity, and absence of malicious patterns.`
                   : result.prediction === 'suspicious'
-                  ? 'Moderate risk. Verify source before proceeding.'
-                  : 'High risk detected. Multiple malicious indicators found.'}
+                  ? `This website shows ${100 - result.confidence}% suspicious indicators. Exercise caution and verify the source before proceeding.`
+                  : `This website is ${100 - result.confidence}% likely to be malicious based on multiple risk factors including URL obfuscation, suspicious patterns, and security vulnerabilities.`}
               </p>
             </div>
           </Card>
