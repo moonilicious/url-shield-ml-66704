@@ -1,11 +1,13 @@
 import { useState } from 'react';
-import { Shield, Loader2, AlertTriangle, CheckCircle, Info, Brain } from 'lucide-react';
+import { Shield, Loader2, AlertTriangle, CheckCircle, Info, Brain, TrendingUp } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card } from '@/components/ui/card';
 import { analyzeURL, type AnalysisResult } from '@/lib/urlAnalysis';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
+import { SafetyScoreGauge } from '@/components/SafetyScoreGauge';
+import { SafetyIndicators } from '@/components/SafetyIndicators';
 
 export const URLScanner = () => {
   const [url, setUrl] = useState('');
@@ -106,9 +108,9 @@ export const URLScanner = () => {
       {/* Results Section */}
       {result && (
         <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-700">
-          {/* Main Result Card */}
+          {/* Safety Score Gauge */}
           <Card
-            className={`p-8 border-2 ${
+            className={`p-8 pt-12 pb-16 border-2 ${
               result.prediction === 'safe'
                 ? 'bg-safe/10 border-safe glow-safe'
                 : result.prediction === 'suspicious'
@@ -116,90 +118,31 @@ export const URLScanner = () => {
                 : 'bg-malicious/10 border-malicious glow-malicious'
             }`}
           >
-            <div className="flex items-start gap-6">
-              <div
-                className={`p-4 rounded-full ${
-                  result.prediction === 'safe' 
-                    ? 'bg-safe/20' 
-                    : result.prediction === 'suspicious'
-                    ? 'bg-yellow-500/20'
-                    : 'bg-malicious/20'
-                }`}
-              >
-                {result.prediction === 'safe' ? (
-                  <CheckCircle className="w-12 h-12 text-safe" />
-                ) : result.prediction === 'suspicious' ? (
-                  <AlertTriangle className="w-12 h-12 text-yellow-500" />
-                ) : (
-                  <AlertTriangle className="w-12 h-12 text-malicious" />
-                )}
-              </div>
-              <div className="flex-1">
-                <h3 className="text-3xl font-bold mb-2">
-                  {result.prediction === 'safe' 
-                    ? 'Safe URL' 
-                    : result.prediction === 'suspicious'
-                    ? 'Suspicious URL'
-                    : 'Malicious URL Detected'}
-                </h3>
-                <p className="text-lg text-muted-foreground mb-4">
-                  {result.prediction === 'safe'
-                    ? 'This URL appears to be legitimate and safe to visit.'
-                    : result.prediction === 'suspicious'
-                    ? 'This URL shows some suspicious indicators. Exercise caution.'
-                    : 'This URL shows multiple indicators of being potentially harmful.'}
-                </p>
-                <div className="flex items-center gap-2">
-                  <Info className="w-5 h-5 text-primary" />
-                  <span className="text-sm font-medium">
-                    Confidence Score: {result.confidence}%
-                  </span>
-                </div>
-              </div>
+            <div className="flex items-center justify-center gap-3 mb-8">
+              <TrendingUp className="w-6 h-6 text-primary" />
+              <h3 className="text-2xl font-bold">Safety Score Analysis</h3>
+            </div>
+            <SafetyScoreGauge 
+              score={result.confidence} 
+              prediction={result.prediction}
+            />
+            <div className="mt-12 text-center">
+              <p className="text-muted-foreground max-w-2xl mx-auto">
+                {result.prediction === 'safe'
+                  ? `This website is ${result.confidence}% likely to be safe based on URL structure, SSL validity, and absence of malicious patterns.`
+                  : result.prediction === 'suspicious'
+                  ? `This website shows ${100 - result.confidence}% suspicious indicators. Exercise caution and verify the source before proceeding.`
+                  : `This website is ${100 - result.confidence}% likely to be malicious based on multiple risk factors including URL obfuscation, suspicious patterns, and security vulnerabilities.`}
+              </p>
             </div>
           </Card>
 
-          {/* Risk Factors */}
-          {result.riskFactors.length > 0 && (
-            <Card className="p-6 bg-card/50 backdrop-blur-sm">
-              <h4 className="text-xl font-bold mb-4 flex items-center gap-2">
-                <AlertTriangle className="w-5 h-5 text-malicious" />
-                Risk Indicators Detected
-              </h4>
-              <ul className="space-y-2">
-                {result.riskFactors.map((factor, index) => (
-                  <li
-                    key={index}
-                    className="flex items-start gap-2 text-malicious-foreground/80"
-                  >
-                    <span className="text-malicious mt-1">•</span>
-                    <span>{factor}</span>
-                  </li>
-                ))}
-              </ul>
-            </Card>
-          )}
-
-          {/* Safety Factors */}
-          {result.safetyFactors.length > 0 && (
-            <Card className="p-6 bg-card/50 backdrop-blur-sm">
-              <h4 className="text-xl font-bold mb-4 flex items-center gap-2">
-                <CheckCircle className="w-5 h-5 text-safe" />
-                Safety Indicators
-              </h4>
-              <ul className="space-y-2">
-                {result.safetyFactors.map((factor, index) => (
-                  <li
-                    key={index}
-                    className="flex items-start gap-2 text-safe-foreground/80"
-                  >
-                    <span className="text-safe mt-1">•</span>
-                    <span>{factor}</span>
-                  </li>
-                ))}
-              </ul>
-            </Card>
-          )}
+          {/* Safety Indicators Breakdown */}
+          <SafetyIndicators 
+            features={result.features}
+            riskFactors={result.riskFactors}
+            safetyFactors={result.safetyFactors}
+          />
 
           {/* AI Analysis Results */}
           {aiResult && (
