@@ -57,12 +57,27 @@ function extractFeatures(url: string) {
     const subdomainCount = Math.max(0, parts.length - 2);
     
     // TLD analysis
-    const tld = parts[parts.length - 1] || '';
+    const tld = parts[parts.length - 1]?.toLowerCase() || '';
     const tldLength = tld.length;
     
+    // Domain name (without TLD)
+    const domainName = parts.length >= 2 ? parts[parts.length - 2] : '';
+    const domainLength = domainName.length;
+    
+    // High-risk TLDs
+    const highRiskTlds = ['shop', 'top', 'xyz', 'cn', 'ru', 'tk', 'ml', 'ga', 'cf', 'gq', 'pw', 'cc', 'ws'];
+    const isHighRiskTld = highRiskTlds.includes(tld);
+    
+    // Brand keywords that are often abused
+    const brandKeywords = ['paypal', 'amazon', 'google', 'microsoft', 'apple', 'facebook', 'instagram', 'netflix', 'bank', 'secure'];
+    const hasBrandKeyword = brandKeywords.some(brand => hostname.toLowerCase().includes(brand));
+    
     // Suspicious keywords
-    const suspiciousKeywords = ['login', 'verify', 'secure', 'account', 'update', 'confirm', 'free', 'bonus', 'prize', 'click'];
+    const suspiciousKeywords = ['login', 'verify', 'secure', 'account', 'update', 'confirm', 'free', 'bonus', 'prize', 'click', 'win', 'urgent'];
     const hasSuspiciousKeyword = suspiciousKeywords.some(keyword => fullUrl.toLowerCase().includes(keyword));
+    
+    // Randomness score (combination of entropy and character patterns)
+    const randomnessScore = (entropyHost / 5) * digitRatio * (specialCharRatio + 0.1);
     
     // Path complexity
     const pathDepth = pathname.split('/').filter(p => p.length > 0).length;
@@ -87,7 +102,13 @@ function extractFeatures(url: string) {
       tldLength,
       hasSuspiciousKeyword,
       pathDepth,
-      numParameters
+      numParameters,
+      tld,
+      isHighRiskTld,
+      domainName,
+      domainLength,
+      hasBrandKeyword,
+      randomnessScore
     };
   } catch (error) {
     console.error('Feature extraction error:', error);
@@ -95,61 +116,96 @@ function extractFeatures(url: string) {
   }
 }
 
-// ML-inspired scoring algorithm
+// SVM-inspired scoring algorithm with non-linear penalties
 function calculateMaliciousScore(features: any): { score: number; featureImportance: any } {
-  // Normalize and weight features (weights tuned for malicious URL detection)
   let score = 0;
   const featureImportance: any = {};
   
-  // Entropy scoring (0-25 points) - Higher entropy = more suspicious
-  const entropyScore = Math.min(25, (features.entropyHost / 5) * 25);
+  // TLD Risk Weight (0-20 points) - HIGH PRIORITY
+  const tldScore = features.isHighRiskTld ? 20 : 0;
+  score += tldScore;
+  featureImportance.risky_tld = parseFloat((tldScore / 20).toFixed(2));
+  
+  // Non-linear entropy scoring (0-25 points) - Aggressive for high entropy
+  const entropyScore = features.entropyHost > 3.5 
+    ? 25 
+    : Math.min(25, Math.pow(features.entropyHost / 3.5, 1.5) * 25);
   score += entropyScore;
   featureImportance.entropy = parseFloat((entropyScore / 25).toFixed(2));
   
-  // Digit ratio (0-15 points) - More digits = more suspicious
-  const digitScore = features.digitRatio * 15;
-  score += digitScore;
-  featureImportance.digit_ratio = parseFloat((digitScore / 15).toFixed(2));
-  
-  // Hyphen ratio (0-10 points)
-  const hyphenScore = features.hyphenRatio * 10;
-  score += hyphenScore;
-  featureImportance.hyphen_usage = parseFloat((hyphenScore / 10).toFixed(2));
-  
-  // HTTPS factor (0-20 points) - No HTTPS = suspicious
-  const httpsScore = features.usesHttps ? 0 : 20;
+  // HTTPS factor (0-15 points) - Strong penalty for non-HTTPS
+  const httpsScore = features.usesHttps ? -5 : 15;
   score += httpsScore;
-  featureImportance.https_missing = parseFloat((httpsScore / 20).toFixed(2));
+  featureImportance.https_missing = parseFloat((Math.max(0, httpsScore) / 15).toFixed(2));
   
-  // Subdomain penalty (0-20 points)
-  const subdomainScore = Math.min(20, features.subdomainCount * 7);
-  score += subdomainScore;
-  featureImportance.subdomain_count = parseFloat((subdomainScore / 20).toFixed(2));
+  // Domain length penalty (0-15 points) - Very short domains are suspicious
+  const domainLengthScore = features.domainLength < 6 
+    ? 15 
+    : features.domainLength < 8 
+      ? 8 
+      : 0;
+  score += domainLengthScore;
+  featureImportance.short_domain = parseFloat((domainLengthScore / 15).toFixed(2));
   
-  // IP address detection (0-15 points)
-  const ipScore = features.hasIpPattern ? 15 : 0;
+  // Digit ratio (0-12 points) - Non-linear penalty
+  const digitScore = features.numDigits > 3 
+    ? 12 
+    : Math.min(12, Math.pow(features.digitRatio, 0.7) * 12);
+  score += digitScore;
+  featureImportance.digit_ratio = parseFloat((digitScore / 12).toFixed(2));
+  
+  // Special characters (0-10 points)
+  const specialCharScore = features.numSpecialChars > 2 
+    ? 10 
+    : features.specialCharRatio * 10;
+  score += specialCharScore;
+  featureImportance.special_chars = parseFloat((specialCharScore / 10).toFixed(2));
+  
+  // IP address detection (0-25 points) - CRITICAL
+  const ipScore = features.hasIpPattern ? 25 : 0;
   score += ipScore;
-  featureImportance.ip_address = parseFloat((ipScore / 15).toFixed(2));
+  featureImportance.ip_address = parseFloat((ipScore / 25).toFixed(2));
+  
+  // Subdomain penalty (0-15 points)
+  const subdomainScore = features.subdomainCount > 2 
+    ? 15 
+    : features.subdomainCount * 5;
+  score += subdomainScore;
+  featureImportance.subdomain_count = parseFloat((subdomainScore / 15).toFixed(2));
+  
+  // Randomness score (0-10 points)
+  const randomnessScorePoints = features.randomnessScore > 0.5 
+    ? 10 
+    : features.randomnessScore * 20;
+  score += randomnessScorePoints;
+  featureImportance.randomness = parseFloat((randomnessScorePoints / 10).toFixed(2));
+  
+  // Brand keyword abuse (0-12 points)
+  const brandScore = features.hasBrandKeyword ? 12 : 0;
+  score += brandScore;
+  featureImportance.brand_abuse = parseFloat((brandScore / 12).toFixed(2));
   
   // Suspicious keywords (0-10 points)
   const keywordScore = features.hasSuspiciousKeyword ? 10 : 0;
   score += keywordScore;
   featureImportance.suspicious_keywords = parseFloat((keywordScore / 10).toFixed(2));
   
-  // Special characters (0-10 points)
-  const specialCharScore = features.specialCharRatio * 10;
-  score += specialCharScore;
-  featureImportance.special_chars = parseFloat((specialCharScore / 10).toFixed(2));
+  // Hyphen ratio (0-8 points)
+  const hyphenScore = features.hyphenRatio > 0.2 ? 8 : features.hyphenRatio * 40;
+  score += hyphenScore;
+  featureImportance.hyphen_usage = parseFloat((hyphenScore / 8).toFixed(2));
   
   // Encoded characters (0-5 points)
   const encodedScore = features.hasEncodedChars ? 5 : 0;
   score += encodedScore;
   featureImportance.url_encoding = parseFloat((encodedScore / 5).toFixed(2));
   
-  // URL length penalty (0-10 points) - Very long URLs are suspicious
-  const lengthScore = features.urlLength > 75 ? Math.min(10, (features.urlLength - 75) / 10) : 0;
+  // URL length penalty (0-8 points)
+  const lengthScore = features.urlLength > 75 
+    ? Math.min(8, (features.urlLength - 75) / 15) 
+    : 0;
   score += lengthScore;
-  featureImportance.url_length = parseFloat((lengthScore / 10).toFixed(2));
+  featureImportance.url_length = parseFloat((lengthScore / 8).toFixed(2));
   
   // Normalize to 0-100 scale
   const normalizedScore = Math.min(100, Math.max(0, score));
@@ -159,7 +215,7 @@ function calculateMaliciousScore(features: any): { score: number; featureImporta
 
 function classifyUrl(score: number): 'safe' | 'suspicious' | 'malicious' {
   if (score <= 40) return 'safe';
-  if (score <= 70) return 'suspicious';
+  if (score <= 65) return 'suspicious';
   return 'malicious';
 }
 
@@ -217,7 +273,7 @@ Based on the extracted features and ML score, provide:
 - reasoning: array of 2-4 concise strings explaining why this URL received its score
 - threat_indicators: specific patterns that contributed to the score
 
-Consider the feature analysis: entropy=${features.entropyHost.toFixed(2)}, digits=${(features.digitRatio * 100).toFixed(1)}%, https=${features.usesHttps}, subdomains=${features.subdomainCount}, ip=${features.hasIpPattern}`
+Consider the feature analysis: entropy=${features.entropyHost.toFixed(2)}, digits=${(features.digitRatio * 100).toFixed(1)}%, https=${features.usesHttps}, subdomains=${features.subdomainCount}, ip=${features.hasIpPattern}, tld=${features.tld}, domain_length=${features.domainLength}, risky_tld=${features.isHighRiskTld}`
           },
           {
             role: 'user',
@@ -256,7 +312,11 @@ Consider the feature analysis: entropy=${features.entropyHost.toFixed(2)}, digit
           has_ip: features.hasIpPattern,
           subdomain_count: features.subdomainCount,
           digit_ratio: parseFloat((features.digitRatio * 100).toFixed(1)),
-          suspicious_keywords: features.hasSuspiciousKeyword
+          suspicious_keywords: features.hasSuspiciousKeyword,
+          tld: features.tld,
+          risky_tld: features.isHighRiskTld,
+          domain_length: features.domainLength,
+          randomness_score: parseFloat(features.randomnessScore.toFixed(2))
         },
         analyzed_at: new Date().toISOString()
       }),
