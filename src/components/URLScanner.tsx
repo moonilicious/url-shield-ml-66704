@@ -14,6 +14,8 @@ export const URLScanner = () => {
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [result, setResult] = useState<AnalysisResult | null>(null);
   const [aiResult, setAiResult] = useState<any>(null);
+  const [mlScore, setMlScore] = useState<number | null>(null);
+  const [featureImportance, setFeatureImportance] = useState<any>(null);
 
   const handleAnalyze = async () => {
     if (!url.trim()) {
@@ -24,6 +26,8 @@ export const URLScanner = () => {
     setIsAnalyzing(true);
     setResult(null);
     setAiResult(null);
+    setMlScore(null);
+    setFeatureImportance(null);
 
     try {
       // Local analysis
@@ -44,11 +48,14 @@ export const URLScanner = () => {
         }
       } else {
         setAiResult(data);
+        setMlScore(data.score);
+        setFeatureImportance(data.featureImportance);
       }
       
-      if (localAnalysis.prediction === 'malicious' || data?.prediction === 'malicious') {
+      const finalPrediction = data?.classification || localAnalysis.prediction;
+      if (finalPrediction === 'malicious') {
         toast.error('Warning: This URL appears to be malicious!');
-      } else if (localAnalysis.prediction === 'suspicious' || data?.prediction === 'suspicious') {
+      } else if (finalPrediction === 'suspicious') {
         toast.warning('Caution: This URL shows suspicious indicators');
       } else {
         toast.success('This URL appears to be safe');
@@ -123,14 +130,14 @@ export const URLScanner = () => {
               <h3 className="text-2xl font-bold">Safety Score Analysis</h3>
             </div>
             <SafetyScoreGauge 
-              score={
+              score={mlScore || (
                 result.prediction === 'safe' 
                   ? Math.max(0, 30 - result.confidence * 0.3)
                   : result.prediction === 'malicious'
                   ? Math.min(100, 70 + result.confidence * 0.3)
                   : 50
-              } 
-              prediction={result.prediction}
+              )} 
+              prediction={aiResult?.classification || result.prediction}
             />
             <div className="mt-12 text-center">
               <p className="text-muted-foreground max-w-2xl mx-auto">
@@ -150,39 +157,65 @@ export const URLScanner = () => {
             safetyFactors={result.safetyFactors}
           />
 
-          {/* AI Analysis Results */}
+          {/* ML Analysis & Feature Importance */}
           {aiResult && (
             <Card className="p-6 bg-card/50 backdrop-blur-sm">
               <h4 className="text-xl font-bold mb-4 flex items-center gap-2">
                 <Brain className="w-5 h-5 text-primary" />
-                AI-Enhanced Analysis
+                ML-Enhanced Analysis
               </h4>
-              <div className="space-y-3">
-                <div className="flex justify-between items-center">
-                  <span className="text-muted-foreground">AI Prediction:</span>
-                  <span className={`font-bold ${
-                    aiResult.prediction === 'safe' 
-                      ? 'text-safe' 
-                      : aiResult.prediction === 'suspicious'
-                      ? 'text-yellow-500'
-                      : 'text-malicious'
-                  }`}>
-                    {aiResult.prediction?.toUpperCase()}
-                  </span>
-                </div>
-                <div className="flex justify-between items-center">
-                  <span className="text-muted-foreground">AI Confidence:</span>
-                  <span className="font-medium">{aiResult.confidence}%</span>
-                </div>
-                {aiResult.category && (
+              <div className="space-y-4">
+                <div className="grid grid-cols-2 gap-4">
                   <div className="flex justify-between items-center">
-                    <span className="text-muted-foreground">Threat Category:</span>
-                    <span className="font-medium capitalize">{aiResult.category}</span>
+                    <span className="text-muted-foreground">Classification:</span>
+                    <span className={`font-bold ${
+                      aiResult.classification === 'safe' 
+                        ? 'text-safe' 
+                        : aiResult.classification === 'suspicious'
+                        ? 'text-yellow-500'
+                        : 'text-malicious'
+                    }`}>
+                      {aiResult.classification?.toUpperCase()}
+                    </span>
+                  </div>
+                  <div className="flex justify-between items-center">
+                    <span className="text-muted-foreground">ML Score:</span>
+                    <span className="font-bold">{aiResult.score}/100</span>
+                  </div>
+                </div>
+
+                {featureImportance && (
+                  <div className="pt-3 border-t">
+                    <p className="text-sm font-semibold mb-3">Feature Importance (Risk Contribution)</p>
+                    <div className="space-y-2">
+                      {Object.entries(featureImportance)
+                        .sort(([, a]: any, [, b]: any) => b - a)
+                        .filter(([, value]: any) => value > 0.1)
+                        .map(([feature, importance]: any, idx: number) => (
+                          <div key={idx} className="space-y-1">
+                            <div className="flex justify-between text-xs">
+                              <span className="capitalize">{feature.replace(/_/g, ' ')}</span>
+                              <span className="font-medium">{(importance * 100).toFixed(0)}%</span>
+                            </div>
+                            <div className="w-full bg-muted rounded-full h-2 overflow-hidden">
+                              <div 
+                                className={`h-full rounded-full transition-all duration-500 ${
+                                  importance > 0.7 ? 'bg-malicious' :
+                                  importance > 0.4 ? 'bg-yellow-500' :
+                                  'bg-primary'
+                                }`}
+                                style={{ width: `${importance * 100}%` }}
+                              />
+                            </div>
+                          </div>
+                        ))}
+                    </div>
                   </div>
                 )}
+
                 {aiResult.reasoning && aiResult.reasoning.length > 0 && (
                   <div className="pt-3 border-t">
-                    <p className="text-sm font-semibold mb-2">AI Reasoning:</p>
+                    <p className="text-sm font-semibold mb-2">AI Explanation:</p>
                     <ul className="space-y-1 text-sm text-muted-foreground">
                       {aiResult.reasoning.map((reason: string, idx: number) => (
                         <li key={idx}>• {reason}</li>
