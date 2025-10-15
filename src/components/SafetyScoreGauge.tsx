@@ -13,15 +13,15 @@ export const SafetyScoreGauge = ({ score, prediction }: SafetyScoreGaugeProps) =
   ];
 
   const getScoreColor = () => {
-    if (score >= 70) return 'text-safe';
-    if (score >= 40) return 'text-yellow-500';
+    if (score <= 30) return 'text-safe';
+    if (score <= 70) return 'text-yellow-500';
     return 'text-malicious';
   };
 
   const getScoreLabel = () => {
-    if (score >= 70) return 'Very Safe';
-    if (score >= 40) return 'Suspicious';
-    return 'Very Malicious';
+    if (score <= 30) return 'Safe';
+    if (score <= 70) return 'Caution';
+    return 'Dangerous';
   };
 
   const getNeedleRotation = () => {
@@ -36,9 +36,9 @@ export const SafetyScoreGauge = ({ score, prediction }: SafetyScoreGaugeProps) =
         <PieChart>
           <defs>
             <linearGradient id="scoreGradient" x1="0%" y1="0%" x2="100%" y2="0%">
-              <stop offset="0%" stopColor="hsl(var(--malicious))" />
+              <stop offset="0%" stopColor="hsl(var(--safe))" />
               <stop offset="50%" stopColor="#facc15" />
-              <stop offset="100%" stopColor="hsl(var(--safe))" />
+              <stop offset="100%" stopColor="hsl(var(--malicious))" />
             </linearGradient>
           </defs>
           <Pie
@@ -85,16 +85,16 @@ export const SafetyScoreGauge = ({ score, prediction }: SafetyScoreGaugeProps) =
 
       {/* Scale Labels */}
       <div className="absolute bottom-[8%] left-0 right-0 flex justify-between px-4 text-xs text-muted-foreground">
-        <span className="text-malicious font-medium">0</span>
+        <span className="text-safe font-medium">0</span>
         <span className="text-yellow-500 font-medium">50</span>
-        <span className="text-safe font-medium">100</span>
+        <span className="text-malicious font-medium">100</span>
       </div>
 
       {/* Zone Labels */}
       <div className="absolute -bottom-8 left-0 right-0 flex justify-between px-8 text-xs font-medium">
-        <span className="text-malicious">Malicious</span>
-        <span className="text-yellow-500">Suspicious</span>
         <span className="text-safe">Safe</span>
+        <span className="text-yellow-500">Caution</span>
+        <span className="text-malicious">Dangerous</span>
       </div>
     </div>
   );
